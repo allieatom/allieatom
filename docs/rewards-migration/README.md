@@ -5,6 +5,13 @@
 **Scope.** Yotpo Loyalty & Referrals only. Yotpo Product Reviews stays unless a separate decision is made (see Open Decisions). Simple Affiliate, Skio and Klaviyo stay; the new service must plug into them where Yotpo did.
 
 Companion document: [01-current-state-inventory.md](01-current-state-inventory.md) holds the evidence behind every statement here.
+> **Update, 2026-10-11 evening.** The Yotpo *admin* is locked for non-payment, but the program itself is still running: Yotpo fired "Swell Points Changed" events into Klaviyo as late as 19:38 UTC today and the 30-day daily event counts show no gap. Two consequences for this plan:
+>
+> 1. **We do not need Yotpo's API or admin to migrate.** Yotpo mirrored every balance, tier, expiry date, referral code and opt-in date onto Klaviyo profile properties in real time, and every earning/redemption event is in Klaviyo's event history. The importer in `rewards-service/src/import` loads a Klaviyo profile export plus a Shopify customer export; the Yotpo API path is kept as an optional cross-check. Stage 0's "obtain Yotpo credentials" is no longer blocking.
+> 2. **The program rules are now confirmed from live data**, not guessed: 1 point per $1 of order subtotal (after discounts, before shipping and tax, floored), +225 for a $200+ order, +60 for creating an account, +100 on birthday, +200 to the advocate when a referred friend's first order is paid (friend gets 10% off), 100/200/300/400 points for $5/$10/$15/$20 single-use codes, 12-month inactivity expiry truncated to the date, Bronze as the base tier with Silver at $900 of spend. Gold and Platinum thresholds are still unknown. Yotpo's widgets and rwrd.io links will stop the moment Yotpo cuts service, so Stage 3 (widgets) is now the critical path, not Stage 2.
+>
+> Build progress is tracked in `rewards-service/README.md`.
+
 
 ---
 
@@ -68,13 +75,13 @@ Interpreted as Better Rhodes-controlled infrastructure rather than a laptop in t
 
 | Data | Primary source | Fallback |
 |---|---|---|
-| Balance per member | Yotpo Loyalty API `GET /api/v2/customers?customer_email=…&with_history=true` (headers `x-guid`, `x-api-key`, base `https://loyalty.yotpo.com/api/v2`, limit 1,500 calls/min) | Yotpo admin Customers CSV export (email, names, balance, referral link) |
-| Earning + redemption history | same call, `with_history=true` | Yotpo admin Earning history and Redemption history reports |
-| VIP tier and tier-until | same call (tier name field) | Shopify `swell_vip_*` tags (tier only, no dates) |
-| Referral code / link | same call | Klaviyo `swell_referral_link`, `swell_referral_discount_code` |
-| Birthday | same call if present | Klaviyo `loyalty_birthday_date` |
+| Balance per member | **Klaviyo profile export** (`swell_point_balance`, kept in sync by Yotpo in real time) joined to a Shopify customer export for ids and `swell_vip_*` tags | Yotpo Loyalty API `GET /api/v2/customers?customer_email=…&with_history=true` (headers `x-guid`, `x-api-key`, base `https://loyalty.yotpo.com/api/v2`, 1,500 calls/min) once the account is unlocked |
+| Earning + redemption history | Klaviyo events `Swell Points Changed` / `Swell Points Earned` / `Swell Redemption Created` (full history, with order ids and reasons) | Yotpo API `with_history=true`; Yotpo admin reports |
+| VIP tier and tier-until | Klaviyo `swell_vip_tier_name`, `swell_vip_tier_ends_at`; Shopify `swell_vip_*` tags as cross-check | Yotpo API customer object |
+| Referral code / link | Klaviyo `swell_referral_link` (the 7-char code is reused, so `betterrhodes.com/r/<code>` maps 1:1 to the old `rwrd.io/<code>`) | Yotpo API `referral_code.code` |
+| Birthday | Klaviyo `loyalty_birthday_date` | Yotpo API `birth_day` / `birthday_month` / `birth_year` |
 | Pending points and their release dates | same call history items with pending state | Yotpo support request |
-| Points expiry dates | derived from history (earn date + 12 months) | Klaviyo `swell_points_expire_at`, `loyalty_next_points_expire_on/amount` |
+| Points expiry dates | Klaviyo `swell_points_expire_at` (authoritative; the importer dates the opening ledger line so expiry matches exactly) | Yotpo API `points_expire_at` |
 | Program rules (campaigns, redemption options, tiers) | Yotpo admin screens, exported manually to a rules file; API has tier/campaign/redemption-option endpoints to cross-check | — |
 | Recently changed members (for delta loads) | `GET /api/v2/customers/recent` (last 7 days) | Klaviyo "Swell Points Changed" events |
 

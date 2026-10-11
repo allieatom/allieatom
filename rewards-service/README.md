@@ -49,4 +49,6 @@ Scheduled jobs (run daily via cron or the platform scheduler): `POST /admin/jobs
 
 Done (tested): ledger, rules, earning, tiers, expiry, order/refund/cancel handling, account-creation bonus, birthday job, redemptions with Shopify code issuance and rollback on failure, referrals (friend code claim, completion on first paid order, self-referral guard, replay-safe), Klaviyo payload parity, outbox with backoff, webhook dedupe, signed proxy, admin API.
 
-Left: importer (`src/import`, in progress), storefront widgets + theme app extension (needs visual capture of the live Yotpo widgets), tier demotion at tier end, reminder jobs (points / redemption / referral-share / expiration reminders), deployment manifests, live verification against a Klaviyo test profile and a Shopify development store.
+Done (tested) as well: importer from a Klaviyo profile export + Shopify customer export (`npm run import -- --klaviyo profiles.csv --shopify customers.csv --snapshot YYYY-MM-DD [--dry-run]`), idempotent and delta-aware, plus a Yotpo API client/mapper for when the Yotpo account is unlocked.
+
+Left: storefront widgets + theme app extension (needs visual capture of the live Yotpo widgets), tier demotion at tier end, reminder jobs (points / redemption / referral-share / expiration reminders), deployment manifests, live verification against a Klaviyo test profile and a Shopify development store.
