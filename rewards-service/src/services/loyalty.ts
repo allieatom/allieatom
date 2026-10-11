@@ -4,6 +4,7 @@ import { Ledger } from '../domain/ledger.js';
 import { Members, randomCode, type Member } from '../domain/members.js';
 import type { Rules, RedemptionOption } from '../domain/rules.js';
 import { allTierTags, evaluateTier, tierByName, tierTag } from '../domain/tiers.js';
+import { membersDueForReminder, runExpiry } from '../domain/expiry.js';
 import { customerGid, type ShopifyAdminApi } from '../shopify/admin.js';
 import { refundedBasisCents, toCents, type ShopifyCustomerPayload, type ShopifyOrderPayload, type ShopifyRefundPayload } from '../shopify/orders.js';
 import { customerSnapshot, Metric, profileProperties } from '../klaviyo/events.js';
@@ -319,6 +320,88 @@ export class LoyaltyService {
       await this.syncProjections(m.id);
     }
     return n;
+  }
+
+
+  // ---------- scheduled maintenance (what Yotpo's cron used to do) ----------
+  private async once(key: string, memberId: number | null, fn: () => Promise<void>): Promise<boolean> {
+    const ins = await this.db.query('insert into reminders_sent (key, member_id) values ($1, $2) on conflict do nothing', [key, memberId]);
+    if (ins.rowCount === 0) return false;
+    await fn();
+    return true;
+  }
+
+  /** Re-evaluate members whose tier period ended: demote, keep, or extend. */
+  async runTierMaintenance(now = this.now()): Promise<{ evaluated: number; demoted: number; retained: number }> {
+    const due = (await this.db.query<Member>('select * from members where tier_ends_at is not null and tier_ends_at <= $1 and locked = false order by id', [now])).rows;
+    let demoted = 0, retained = 0;
+    const windowMs = this.rules.tiers.evaluationWindowMonths * 30.4375 * 86_400_000;
+    for (const m of due) {
+      const spend = await this.spendInWindow(m.id);
+      const target = evaluateTier(this.rules, { spendCentsInWindow: spend });
+      const current = tierByName(this.rules, m.tier);
+      const endsAt = target.rank === 0 ? null : new Date(now.getTime() + windowMs);
+      await this.members.setTier(m.id, target.name, endsAt);
+      const updated = (await this.members.byId(m.id))!;
+      if (updated.shopify_customer_id && target.name !== current.name) {
+        await enqueue(this.db, 'shopify_tags', { customerGid: customerGid(updated.shopify_customer_id), add: [tierTag(this.rules, target)], remove: allTierTags(this.rules).filter((t) => t !== tierTag(this.rules, target)) });
+      }
+      if (target.rank < current.rank) {
+        demoted++;
+        await this.emit(Metric.tierLost, updated, `tier-lost:${m.id}:${now.toISOString().slice(0, 10)}`, { topic: 'swell/tier/lost', old_tier: { name: current.name, rank: current.rank }, new_tier: { name: target.name, rank: target.rank } }, now);
+      } else retained++;
+      await this.emit(Metric.tierStatusChanged, updated, `tier-status:${m.id}:${now.toISOString().slice(0, 10)}`, { topic: 'swell/tier/status_changed', old_tier: { name: current.name }, new_tier: { name: target.name }, vip_tier_ends_at: endsAt ? endsAt.toISOString().slice(0, 10) : null }, now);
+      await this.syncProjections(m.id);
+    }
+    return { evaluated: due.length, demoted, retained };
+  }
+
+  /** Reminder events Klaviyo flows are triggered by. Each fires once per member per occurrence. */
+  async runReminders(now = this.now()): Promise<{ expiration: number; redemption: number; points: number; referralShare: number }> {
+    const out = { expiration: 0, redemption: 0, points: 0, referralShare: 0 };
+
+    for (const d of await membersDueForReminder(this.db, this.rules, now)) {
+      const m = (await this.members.byId(d.id))!;
+      if (m.locked || !m.opted_in_at) continue;
+      const expireDate = new Date(d.points_expire_at).toISOString().slice(0, 10);
+      if (await this.once(`expiration:${m.id}:${expireDate}`, m.id, () => this.emit(Metric.expirationReminder, m, `expiration:${m.id}:${expireDate}`, { topic: 'loyalty/expiration_reminder', points_balance: m.points_balance, points_expire_at: expireDate, loyalty_next_points_expire_on: expireDate, loyalty_next_points_expire_amount: m.points_balance }, now))) out.expiration++;
+    }
+
+    const unused = (await this.db.query<Redemption>(`select * from redemptions where status = 'issued' and issued_at <= $1`, [new Date(now.getTime() - 7 * 86_400_000)])).rows;
+    for (const r of unused) {
+      const m = (await this.members.byId(r.member_id))!;
+      if (await this.once(`redemption:${r.id}`, m.id, () => this.emit(Metric.redemptionReminder, m, `redemption-reminder:${r.id}`, { topic: 'swell/redemption/reminder', redemption: { id: r.id, code: r.code, reward_text: r.code, created_at: r.created_at }, redemption_option_name: r.title }, now))) out.redemption++;
+    }
+
+    const minPoints = Math.min(...this.rules.redemption.options.map((o) => o.points));
+    const idle = (await this.db.query<Member>(
+      `select m.* from members m where m.opted_in_at is not null and m.locked = false and m.points_balance >= $1
+         and not exists (select 1 from point_transactions t where t.member_id = m.id and t.occurred_at > $2)`,
+      [minPoints, new Date(now.getTime() - 30 * 86_400_000)],
+    )).rows;
+    const month = now.toISOString().slice(0, 7);
+    for (const m of idle) {
+      if (await this.once(`points:${m.id}:${month}`, m.id, () => this.emit(Metric.pointsReminder, m, `points-reminder:${m.id}:${month}`, { topic: 'swell/points/reminder', points_balance: m.points_balance, redeemable: this.rules.redemption.options.filter((o) => o.points <= m.points_balance).map((o) => o.title) }, now))) out.points++;
+    }
+
+    const stale = (await this.db.query<{ id: number; referrer_member_id: number; referred_email: string | null }>(
+      `select id, referrer_member_id, referred_email from referrals where status in ('shared','clicked') and created_at <= $1 and created_at > $2`,
+      [new Date(now.getTime() - 7 * 86_400_000), new Date(now.getTime() - 60 * 86_400_000)],
+    )).rows;
+    for (const r of stale) {
+      const m = (await this.members.byId(r.referrer_member_id))!;
+      if (await this.once(`share:${r.id}`, m.id, () => this.emit(Metric.referralShareReminder, m, `share-reminder:${r.id}`, { topic: 'swell/referral/share_reminder', referred_email: r.referred_email }, now))) out.referralShare++;
+    }
+    return out;
+  }
+
+  /** Everything that should run once a day. */
+  async runDaily(now = this.now()) {
+    const expiry = await runExpiry(this.db, this.ledger, this.rules, now);
+    const birthdays = await this.awardBirthdays(now);
+    const tiers = await this.runTierMaintenance(now);
+    const reminders = await this.runReminders(now);
+    return { expiry, birthdays, tiers, reminders };
   }
 
   // ---------- storefront view model ----------

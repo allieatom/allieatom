@@ -2,7 +2,7 @@
 
 Self-hosted loyalty & referrals for Better Rhodes. Replaces Yotpo Loyalty & Referrals while keeping the customer-facing behaviour identical: same earning rules, same $5/$10/$15/$20 single-use codes, same `swell_vip_*` customer tags, and the same Klaviyo event and profile-property names so every existing flow keeps firing.
 
-Status: **foundation complete, not yet deployed.** See "What's done / what's left" below.
+Status: **feature-complete for a shadow run; not yet deployed.** See "What's done / what's left" below.
 
 ## How it fits together
 
@@ -47,8 +47,11 @@ Scheduled jobs (run daily via cron or the platform scheduler): `POST /admin/jobs
 
 ## What's done / what's left
 
-Done (tested): ledger, rules, earning, tiers, expiry, order/refund/cancel handling, account-creation bonus, birthday job, redemptions with Shopify code issuance and rollback on failure, referrals (friend code claim, completion on first paid order, self-referral guard, replay-safe), Klaviyo payload parity, outbox with backoff, webhook dedupe, signed proxy, admin API.
+Done (44 tests): ledger, rules, earning, tiers, expiry, order/refund/cancel handling, account-creation bonus, birthday job, redemptions with Shopify code issuance and rollback on failure, referrals (friend code claim, completion on first paid order, self-referral guard, replay-safe), Klaviyo payload parity, outbox with backoff, webhook dedupe, signed proxy, admin API, importer from Klaviyo + Shopify exports with Yotpo API cross-check, scheduled maintenance (tier demotion at period end; expiration, redemption, points and referral-share reminders; `npm run jobs:daily` or `POST /admin/jobs/daily`), storefront widget + theme app extension (`extensions/rewards-widget`: launcher app embed, rewards-page and referral-page app blocks), replacement theme templates (`theme/`), Dockerfile, Fly example, GitHub Actions CI.
 
-Done (tested) as well: importer from a Klaviyo profile export + Shopify customer export (`npm run import -- --klaviyo profiles.csv --shopify customers.csv --snapshot YYYY-MM-DD [--dry-run]`), idempotent and delta-aware, plus a Yotpo API client/mapper for when the Yotpo account is unlocked.
-
-Left: storefront widgets + theme app extension (needs visual capture of the live Yotpo widgets), tier demotion at tier end, reminder jobs (points / redemption / referral-share / expiration reminders), deployment manifests, live verification against a Klaviyo test profile and a Shopify development store.
+Left, in order:
+1. **Deploy a shadow instance** (any container host + managed Postgres), create the Shopify custom app from `shopify.app.toml`, point webhooks at it, keep both feature flags off. Verify `orders/paid` lands and points accrue in the shadow ledger.
+2. **Import**: export Klaviyo profiles (segment `swell_point_balance is set`, include all `swell_*`/`loyalty_*` properties) and Shopify customers, run `npm run import -- --dry-run`, then for real. Reconcile against Klaviyo nightly until drift is under 0.5%.
+3. **Visual parity pass** on the widget CSS/markup against screenshots of the live Yotpo launcher, rewards page and referral page (this environment cannot reach the storefront). Deploy the extension with `shopify app deploy`, then wire the two JSON templates in `theme/` on a duplicate theme.
+4. **Cutover** per `docs/rewards-migration/README.md` Stage 4: flip `KLAVIYO_EMIT_ENABLED` and `SHOPIFY_SYNC_ENABLED`, publish the theme, disable the Yotpo Loyalty app embed, update the Skio block.
+5. Confirm Gold/Platinum thresholds and any tier perks (unknown; `config/rules.json` marks them `todo`).

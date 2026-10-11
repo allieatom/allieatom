@@ -1,0 +1,12 @@
+{
+  "sections": {
+    "main": { "type": "main-page", "disabled": true, "settings": {} },
+    "refer": {
+      "type": "apps",
+      "settings": { "full_width": false, "space_around": true },
+      "blocks": { "referral_widget": { "type": "shopify://apps/better-rhodes-rewards/blocks/referral-page/REPLACE_WITH_EXTENSION_UUID", "settings": {} } },
+      "block_order": ["referral_widget"]
+    }
+  },
+  "order": ["main", "refer"]
+}

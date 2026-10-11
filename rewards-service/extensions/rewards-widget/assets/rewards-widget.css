@@ -1,0 +1,34 @@
+/* Better Rhodes Rewards widget. Tokens are overridable from the theme editor block settings.
+   Visual parity pass against the captured Yotpo widgets happens in this file only. */
+[data-br-rewards] { --brw-primary: #ed6921; --brw-text-on-primary: #fff; --brw-bg: #fff; --brw-fg: #222; --brw-muted: #6b6b6b; --brw-border: #e6e6e6; --brw-radius: 12px; --brw-shadow: 0 10px 30px rgba(0,0,0,.18); font-family: inherit; color: var(--brw-fg); }
+.brw { box-sizing: border-box; } .brw *, .brw *::before, .brw *::after { box-sizing: inherit; }
+.brw-btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .7rem 1.1rem; border-radius: var(--brw-radius); border: 1px solid var(--brw-primary); background: var(--brw-primary); color: var(--brw-text-on-primary); font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; line-height: 1.1; }
+.brw-btn:disabled { opacity: .45; cursor: not-allowed; }
+.brw-btn--ghost { background: transparent; color: var(--brw-primary); }
+.brw-btn--sm { padding: .45rem .8rem; font-size: .9rem; }
+.brw-card { background: var(--brw-bg); border: 1px solid var(--brw-border); border-radius: var(--brw-radius); padding: 1.1rem; }
+.brw-muted { color: var(--brw-muted); font-size: .9rem; }
+.brw-h { margin: 0 0 .35rem; font-size: 1.15rem; font-weight: 700; }
+.brw-balance { font-size: 2.4rem; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+.brw-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-top: 1px solid var(--brw-border); }
+.brw-row:first-of-type { border-top: 0; }
+.brw-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.brw-pill { display: inline-block; padding: .2rem .6rem; border-radius: 999px; background: color-mix(in srgb, var(--brw-primary) 14%, white); color: var(--brw-primary); font-weight: 600; font-size: .8rem; }
+.brw-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 700; letter-spacing: .08em; padding: .35rem .6rem; border: 1px dashed var(--brw-primary); border-radius: 8px; background: color-mix(in srgb, var(--brw-primary) 8%, white); }
+.brw-input { width: 100%; padding: .7rem .9rem; border: 1px solid var(--brw-border); border-radius: var(--brw-radius); font: inherit; }
+.brw-form { display: flex; gap: .6rem; flex-wrap: wrap; } .brw-form .brw-input { flex: 1 1 220px; }
+.brw-msg { margin-top: .6rem; font-size: .9rem; } .brw-msg--err { color: #b00020; } .brw-msg--ok { color: #1b7a3a; }
+.brw-progress { height: 8px; border-radius: 999px; background: var(--brw-border); overflow: hidden; margin: .5rem 0; } .brw-progress > span { display: block; height: 100%; background: var(--brw-primary); }
+/* launcher */
+.brw-launcher { position: fixed; bottom: 20px; z-index: 2147483000; }
+.brw-launcher--right { right: 20px; } .brw-launcher--left { left: 20px; }
+.brw-launcher__btn { box-shadow: var(--brw-shadow); border-radius: 999px; padding: .85rem 1.25rem; }
+.brw-panel { position: fixed; bottom: 84px; width: min(380px, calc(100vw - 32px)); max-height: min(72vh, 640px); overflow: auto; background: var(--brw-bg); border-radius: var(--brw-radius); box-shadow: var(--brw-shadow); border: 1px solid var(--brw-border); z-index: 2147483001; }
+.brw-launcher--right .brw-panel { right: 20px; } .brw-launcher--left .brw-panel { left: 20px; }
+.brw-panel__head { position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; padding: .9rem 1.1rem; background: var(--brw-primary); color: var(--brw-text-on-primary); }
+.brw-panel__head h3 { margin: 0; font-size: 1.05rem; }
+.brw-panel__close { background: transparent; border: 0; color: inherit; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.brw-panel__body { padding: 1rem 1.1rem 1.25rem; display: grid; gap: 1rem; }
+.brw-page { display: grid; gap: 1.25rem; max-width: 1100px; margin: 0 auto; padding: 1rem 0 2rem; }
+.brw-hero { display: grid; gap: .4rem; padding: 1.5rem; border-radius: var(--brw-radius); background: color-mix(in srgb, var(--brw-primary) 10%, white); }
+@media (max-width: 560px) { .brw-balance { font-size: 2rem; } .brw-panel { bottom: 76px; } }

@@ -29,7 +29,7 @@ describe('orders/paid', () => {
     expect(changed).toMatchObject({ previous_balance: 0, current_balance: 106, difference: 106, points_changed_reason: 'Make a Purchase', related_order_ids: ['18937236553862'] });
     const profile = (await outboxRows('klaviyo_profile'))[0]!.payload['properties'] as Record<string, unknown>;
     expect(profile).toMatchObject({ swell_point_balance: 106, swell_vip_tier_name: 'Bronze', loyalty_opt_in: true, loyalty_nt_amount_cents: 90000 - 10691 });
-    expect(profile['swell_referral_link']).toMatch(/^https:\/\/www\.betterrhodes\.com\/r\/[a-z0-9]{7}$/);
+    expect(profile['swell_referral_link']).toMatch(/^https:\/\/www\.betterrhodes\.com\/pages\/loyalty-refer\?ref=[a-z0-9]{7}$/);
   });
 
   it('ignores a replayed order', async () => {

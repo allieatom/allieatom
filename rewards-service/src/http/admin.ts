@@ -33,6 +33,9 @@ export async function adminRoutes(app: FastifyInstance, deps: AdminDeps): Promis
 
   app.post('/admin/jobs/expire', async () => runExpiry(deps.db, deps.loyalty.ledger, deps.rules));
   app.post('/admin/jobs/birthdays', async () => ({ awarded: await deps.loyalty.awardBirthdays() }));
+  app.post('/admin/jobs/tiers', async () => deps.loyalty.runTierMaintenance());
+  app.post('/admin/jobs/reminders', async () => deps.loyalty.runReminders());
+  app.post('/admin/jobs/daily', async () => deps.loyalty.runDaily());
 
   app.get('/admin/stats', async () => {
     const [members, balance, outbox] = await Promise.all([

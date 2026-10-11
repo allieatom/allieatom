@@ -32,7 +32,7 @@
   "referral": {
     "codeLength": 7,
     "codeAlphabet": "abcdefghijklmnopqrstuvwxyz0123456789",
-    "landingPath": "/r/",
+    "landingPath": "/pages/loyalty-refer?ref=",
     "friendReward": { "title": "10% off your first order", "discountType": "percentage", "value": 10, "firstOrderOnly": true },
     "completeOn": "first_paid_order",
     "clawbackDays": 30

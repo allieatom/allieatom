@@ -28,7 +28,7 @@ Yotpo's footprint at Better Rhodes is wide but shallow. The customer-facing surf
 | Redemption → checkout | Yotpo creates a single-use Shopify discount code ($5/$10/$15/$20, 8-char code, no stacking) | Rewards Service creates an identical discount via Shopify Admin API |
 | Tier → Shopify | Customer tags `swell_vip_bronze/silver/gold/platinum` | Same tags, written by Rewards Service |
 | Email automation | 31 Klaviyo metrics + ~14 profile properties, 7 live flows | Same metric names and property names emitted by Rewards Service, so no flow or template changes |
-| Referral links | Yotpo short links `rwrd.io/xxxx` | `betterrhodes.com/r/<code>` (Yotpo's domain cannot be kept) |
+| Referral links | Yotpo short links `rwrd.io/xxxx` | `betterrhodes.com/pages/loyalty-refer?ref=<code>` (Yotpo's domain cannot be kept) |
 | Subscription portal | Skio custom block embedding Yotpo widget (to confirm) | Same block, pointing at our widget |
 | Admin | Yotpo dashboard | Minimal internal admin (search member, adjust points, view history, export) |
 
@@ -78,7 +78,7 @@ Interpreted as Better Rhodes-controlled infrastructure rather than a laptop in t
 | Balance per member | **Klaviyo profile export** (`swell_point_balance`, kept in sync by Yotpo in real time) joined to a Shopify customer export for ids and `swell_vip_*` tags | Yotpo Loyalty API `GET /api/v2/customers?customer_email=…&with_history=true` (headers `x-guid`, `x-api-key`, base `https://loyalty.yotpo.com/api/v2`, 1,500 calls/min) once the account is unlocked |
 | Earning + redemption history | Klaviyo events `Swell Points Changed` / `Swell Points Earned` / `Swell Redemption Created` (full history, with order ids and reasons) | Yotpo API `with_history=true`; Yotpo admin reports |
 | VIP tier and tier-until | Klaviyo `swell_vip_tier_name`, `swell_vip_tier_ends_at`; Shopify `swell_vip_*` tags as cross-check | Yotpo API customer object |
-| Referral code / link | Klaviyo `swell_referral_link` (the 7-char code is reused, so `betterrhodes.com/r/<code>` maps 1:1 to the old `rwrd.io/<code>`) | Yotpo API `referral_code.code` |
+| Referral code / link | Klaviyo `swell_referral_link` (the 7-char code is reused, so `betterrhodes.com/pages/loyalty-refer?ref=<code>` maps 1:1 to the old `rwrd.io/<code>`) | Yotpo API `referral_code.code` |
 | Birthday | Klaviyo `loyalty_birthday_date` | Yotpo API `birth_day` / `birthday_month` / `birth_year` |
 | Pending points and their release dates | same call history items with pending state | Yotpo support request |
 | Points expiry dates | Klaviyo `swell_points_expire_at` (authoritative; the importer dates the opening ledger line so expiry matches exactly) | Yotpo API `points_expire_at` |
@@ -140,7 +140,7 @@ Deliverables
 - Theme app extension (embed + block) and the two replacement page templates, built on a **duplicate of the live theme**, never on the live theme.
 - App proxy endpoints: member state, redemption, referral share (email + copy link), opt-in.
 - Redemption creates Shopify discount with identical format and rules; checkout tested.
-- Referral landing `/r/<code>` and friend 10% code issuance; completion logic on paid order.
+- Referral landing (`/pages/loyalty-refer?ref=<code>`) and friend 10% code issuance; completion logic on paid order.
 - Klaviyo emitter: all 31 metric names and all profile properties, behind a feature flag (off until cutover). Verified against a Klaviyo test profile.
 - Shopify projections: tier tags and metafields behind the same flag.
 - Skio custom block variant pointing at our widget (if Stage 0 confirms the block exists).
