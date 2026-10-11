@@ -54,6 +54,10 @@ describe('HTTP surface', () => {
     expect(res.json().code).toMatch(/^[A-Z0-9]{8}$/);
     expect(res.json().state.member.pointsBalance).toBe(6);
   });
+  it('reports Shopify connectivity through the admin API', async () => {
+    const res = await app.inject({ method: 'GET', url: '/admin/shopify/ping', headers: { authorization: 'Bearer admintoken123' } });
+    expect(res.json()).toMatchObject({ ok: true, shop: { myshopifyDomain: 'betterrhodes.myshopify.com' } });
+  });
   it('guards the admin API with a bearer token', async () => {
     expect((await app.inject({ method: 'GET', url: '/admin/stats' })).statusCode).toBe(401);
     const ok = await app.inject({ method: 'GET', url: '/admin/stats', headers: { authorization: 'Bearer admintoken123' } });

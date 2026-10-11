@@ -6,6 +6,7 @@ export class FakeShopifyAdmin implements ShopifyAdminApi {
     if (this.failNext) { this.failNext = false; throw new Error('simulated Shopify outage'); }
     this.created.push(spec); return { discountNodeId: `gid://shopify/DiscountCodeNode/${1000 + this.created.length}` };
   }
+  async ping() { return { name: 'Better Rhodes (fake)', myshopifyDomain: 'betterrhodes.myshopify.com' }; }
   async deactivateDiscount(): Promise<void> {}
   async addCustomerTags(gid: string, add: string[]) { this.tags.push({ gid, add }); }
   async removeCustomerTags(gid: string, remove: string[]) { this.tags.push({ gid, remove }); }

@@ -17,6 +17,6 @@ export function buildApp(deps: AppDeps): { app: FastifyInstance; loyalty: Loyalt
   app.get('/healthz', async () => ({ ok: true }));
   app.register(async (i) => webhookRoutes(i, { db: deps.db, loyalty, shopifySecret: deps.webhookSecret }));
   app.register(async (i) => proxyRoutes(i, { loyalty, shopifySecret: deps.proxySecret }));
-  app.register(async (i) => adminRoutes(i, { db: deps.db, loyalty, rules: deps.rules, token: deps.adminToken }));
+  app.register(async (i) => adminRoutes(i, { db: deps.db, loyalty, rules: deps.rules, token: deps.adminToken, shopify: deps.shopify }));
   return { app, loyalty };
 }

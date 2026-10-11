@@ -6,20 +6,24 @@ Time: about 30 minutes, all in web dashboards. No command line needed.
 
 What you'll end up with
 - A web service at `https://betterrhodes-rewards.onrender.com` (Render may add a suffix), Postgres, and a nightly job.
-- A Shopify custom app token and six store-level webhooks pointing at the service.
+- A Shopify Dev Dashboard app (client credentials) and six store-level webhooks pointing at the service.
 - Monthly cost around $15 (web $7, Postgres $6, cron about $1).
 
-Have ready: Shopify admin login with permission to develop apps, a GitHub login that can see `allieatom/allieatom`, a card for Render.
+Have ready: Shopify login with app-development permission in the Better Rhodes organization, a GitHub login that can see `allieatom/allieatom`, a card for Render.
 
 ---
 
-## Part 1: Shopify access token (5 minutes)
+## Part 1: Shopify app credentials (10 minutes)
 
-1. Shopify admin → **Settings → Apps and sales channels → Develop apps**. If you see "Allow custom app development", click it and confirm.
-2. **Create an app** → name `Better Rhodes Rewards` → Create.
-3. **Configure Admin API scopes** → tick exactly: `read_orders`, `read_customers`, `write_customers`, `read_discounts`, `write_discounts` → Save.
-4. **Install app** → confirm.
-5. On the **API credentials** tab, click **Reveal token once** under *Admin API access token*. Copy it into your password manager as `SHOPIFY_ADMIN_ACCESS_TOKEN`. Shopify shows it only once.
+Shopify no longer lets you create custom apps inside the store admin; "Develop apps" now opens the **Dev Dashboard** (dev.shopify.com). The service authenticates with the app's Client ID and Client secret (the client-credentials grant), so there is no `shpat_` token to find.
+
+1. Open the Dev Dashboard (Shopify admin → Settings → Apps and sales channels → Develop apps, or dev.shopify.com). Make sure the organization shown is Better Rhodes' own organization, not a separate partner account: the store must appear under this organization for the credentials to work.
+2. **Apps → Create app → Start from Dev Dashboard**. Name it `Better Rhodes Rewards` → Create.
+3. **Versions → Create version**: leave the App URL at the default (the app is not embedded), choose the newest Webhooks API version, and under Scopes tick `read_orders`, `read_customers`, `write_customers`, `read_discounts`, `write_discounts`. Select **Release**.
+4. **Install app** (top of the Installs card). Pick the Better Rhodes store in the tab that opens and confirm Install.
+5. **App settings → Credentials**: copy the **Client ID** and the **Client secret** (starts with `shpss_`) into your password manager. Never paste them into chat; if that happens, use **Rotate** on the same card afterwards.
+
+Render needs both values as `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`.
 
 ## Part 2: Render (10 minutes)
 
@@ -27,10 +31,11 @@ Have ready: Shopify admin login with permission to develop apps, a GitHub login 
 2. **New + → Blueprint**. Pick the repo. Branch: `claude/rewards-migration-yotpo-ggq4wf` (switch to `main` after the pull request merges: service → Settings → Branch).
 3. Render reads `render.yaml` and lists a web service, a cron job, a database and an environment group. Blueprint name: `betterrhodes-rewards`. Click **Apply**.
 4. It asks for the values marked "set in dashboard":
-   - `SHOPIFY_ADMIN_ACCESS_TOKEN`: paste the token from Part 1.
+   - `SHOPIFY_CLIENT_ID` and `SHOPIFY_CLIENT_SECRET`: paste the values from Part 1.
    - `SHOPIFY_WEBHOOK_SECRET`: type `pending` for now (you'll get the real one in Part 3).
    - `KLAVIYO_PRIVATE_API_KEY`: leave empty for now. Emission is off anyway.
 5. Wait. Postgres takes about 2 minutes, the first Docker build 3 to 5 minutes. When the web service shows **Live**, open its URL and add `/healthz`. You should see `{"ok":true}`.
+6. Check the Shopify credentials work: call `GET https://<your-render-url>/admin/shopify/ping` with header `Authorization: Bearer <ADMIN_API_TOKEN>` (the token is in Render → Env Groups → rewards-shared). `{"ok":true,"shop":{...}}` means the token grant and a read query both succeeded. An error mentioning `shop_not_permitted` means the app and store are in different organizations, or the app isn't installed yet (Part 1 steps 1 and 4).
 6. Note the service URL. You need it in Part 3.
 
 ## Part 3: Shopify webhooks (10 minutes)
@@ -72,5 +77,6 @@ Have ready: Shopify admin login with permission to develop apps, a GitHub login 
 - **Build fails on Render**: open the build log; the usual cause is the branch name. Re-check Part 2 step 2.
 - **`/healthz` is fine but webhooks return 401**: the webhook secret is wrong or still `pending`. Redo Part 3 steps 3 to 4.
 - **Webhooks return 500**: the service hit an error processing the payload. Logs show the stack; Shopify retries automatically for 48 hours, so no data is lost.
-- **Shopify says the app can't be installed**: your staff account lacks the "Develop apps" permission; ask the store owner.
+- **Shopify says the app can't be installed**: your account lacks app-development permission in the organization; ask the store owner.
+- **`/admin/shopify/ping` fails with `shop_not_permitted`**: the Dev Dashboard app lives in a different organization from the store. Create the app again while signed in to the Better Rhodes organization, or ask the owner to add you to it.
 - **Rollback**: Render → web service → Settings → Suspend. Shopify keeps retrying webhooks for 48 hours, and nothing customer-facing depends on the service yet.

@@ -4,8 +4,9 @@ import type { Db } from '../db/index.js';
 import type { LoyaltyService } from '../services/loyalty.js';
 import { runExpiry } from '../domain/expiry.js';
 import type { Rules } from '../domain/rules.js';
+import type { ShopifyAdminApi } from '../shopify/admin.js';
 
-export interface AdminDeps { db: Db; loyalty: LoyaltyService; rules: Rules; token: string }
+export interface AdminDeps { db: Db; loyalty: LoyaltyService; rules: Rules; token: string; shopify: ShopifyAdminApi }
 
 export async function adminRoutes(app: FastifyInstance, deps: AdminDeps): Promise<void> {
   app.addHook('preHandler', async (req, reply) => {
@@ -36,6 +37,12 @@ export async function adminRoutes(app: FastifyInstance, deps: AdminDeps): Promis
   app.post('/admin/jobs/tiers', async () => deps.loyalty.runTierMaintenance());
   app.post('/admin/jobs/reminders', async () => deps.loyalty.runReminders());
   app.post('/admin/jobs/daily', async () => deps.loyalty.runDaily());
+
+  /** Verifies the Shopify credentials end to end (token grant + one read-only query). */
+  app.get('/admin/shopify/ping', async (_req, reply) => {
+    try { return { ok: true, shop: await deps.shopify.ping() }; }
+    catch (err) { return reply.code(502).send({ ok: false, error: (err as Error).message }); }
+  });
 
   app.get('/admin/stats', async () => {
     const [members, balance, outbox] = await Promise.all([

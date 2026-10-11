@@ -5,7 +5,9 @@ envVarGroups:
     envVars:
       - key: SHOPIFY_SHOP_DOMAIN
         value: betterrhodes.myshopify.com
-      - key: SHOPIFY_ADMIN_ACCESS_TOKEN
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
         sync: false
       - key: SHOPIFY_WEBHOOK_SECRET
         sync: false

@@ -10,6 +10,8 @@ export interface DiscountSpec {
 }
 
 export interface ShopifyAdminApi {
+  /** Read-only connectivity + credential check. */
+  ping(): Promise<{ name: string; myshopifyDomain: string }>;
   createDiscountCode(spec: DiscountSpec): Promise<{ discountNodeId: string }>;
   deactivateDiscount(discountNodeId: string): Promise<void>;
   addCustomerTags(customerGid: string, tags: string[]): Promise<void>;
@@ -34,7 +36,13 @@ export class TokenProvider {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
       body: new URLSearchParams({ grant_type: 'client_credentials', client_id: this.auth.clientId, client_secret: this.auth.clientSecret }),
     });
-    if (!res.ok) throw new Error(`Shopify token request failed: ${res.status} ${await res.text()}`);
+    if (!res.ok) {
+      const text = await res.text();
+      const hint = text.includes('shop_not_permitted')
+        ? ' The app and the store must belong to the same Shopify organization in the Dev Dashboard, and the app must be installed on the store.'
+        : text.includes('invalid_client') ? ' Check SHOPIFY_CLIENT_ID / SHOPIFY_CLIENT_SECRET.' : '';
+      throw new Error(`Shopify token request failed: ${res.status} ${text}.${hint}`);
+    }
     const json = (await res.json()) as { access_token: string; expires_in: number; scope?: string };
     this.cached = { token: json.access_token, expiresAt: this.now() + json.expires_in * 1000 };
     return json.access_token;
@@ -62,6 +70,11 @@ export class ShopifyAdmin implements ShopifyAdminApi {
     if (json.errors?.length) throw new Error(`Shopify GraphQL errors: ${json.errors.map((e) => e.message).join('; ')}`);
     if (!json.data) throw new Error('Shopify GraphQL: empty data');
     return json.data;
+  }
+
+  async ping(): Promise<{ name: string; myshopifyDomain: string }> {
+    const d = await this.graphql<{ shop: { name: string; myshopifyDomain: string } }>('{ shop { name myshopifyDomain } }');
+    return d.shop;
   }
 
   async createDiscountCode(spec: DiscountSpec): Promise<{ discountNodeId: string }> {
