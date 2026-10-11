@@ -10,7 +10,7 @@ import { testDb, testRules } from './helpers.js';
 const secret = 'shpss_test'; let db: Db; let app: FastifyInstance;
 beforeAll(async () => {
   db = await testDb();
-  ({ app } = buildApp({ db, rules: testRules(), shopify: new FakeShopifyAdmin(), shopifySecret: secret, adminToken: 'admintoken123', publicBaseUrl: 'https://www.betterrhodes.com', logLevel: 'silent' }));
+  ({ app } = buildApp({ db, rules: testRules(), shopify: new FakeShopifyAdmin(), webhookSecret: secret, proxySecret: secret, adminToken: 'admintoken123', publicBaseUrl: 'https://www.betterrhodes.com', logLevel: 'silent' }));
   await app.ready();
 });
 afterAll(async () => { await app?.close(); await db?.close(); });

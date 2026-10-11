@@ -11,7 +11,7 @@ if (!config.DATABASE_URL) throw new Error('DATABASE_URL is required');
 const db = createPgDb(config.DATABASE_URL);
 await migrate(db);
 const rules = await loadRules(config.RULES_PATH);
-const shopify = new ShopifyAdmin(config.SHOPIFY_SHOP_DOMAIN, config.SHOPIFY_ADMIN_ACCESS_TOKEN, config.SHOPIFY_API_VERSION);
+const shopify = new ShopifyAdmin(config.SHOPIFY_SHOP_DOMAIN, config.shopify.auth, config.SHOPIFY_API_VERSION);
 const loyalty = new LoyaltyService({ db, rules, shopify, publicBaseUrl: config.PUBLIC_BASE_URL });
 const result = await loyalty.runDaily();
 const delivered = await processOutbox(db, new LiveSender({ klaviyoApiKey: config.KLAVIYO_PRIVATE_API_KEY, klaviyoEnabled: config.KLAVIYO_EMIT_ENABLED, shopifyEnabled: config.SHOPIFY_SYNC_ENABLED, shopify }), 1000);

@@ -21,6 +21,10 @@ rewards-service --Admin API--> Shopify discount codes for redemptions and referr
 - `src/klaviyo/*`: Yotpo-compatible metric names/payloads and a durable outbox with retry.
 - `src/http/*`: `/webhooks/shopify`, `/proxy/*` (storefront), `/admin/*` (bearer token), `/healthz`.
 
+## Deploy
+
+Follow `docs/rewards-migration/02-shadow-deploy-runbook.md` (Render blueprint at the repo root, Shopify custom-app token and store-level webhooks, about 30 minutes in web dashboards).
+
 ## Run locally
 
 ```bash
@@ -35,7 +39,9 @@ Scheduled jobs (run daily via cron or the platform scheduler): `POST /admin/jobs
 
 ## Shopify custom app setup (Stage 1)
 
-1. Create a custom app on the Better Rhodes store with scopes `read_orders, read_customers, write_customers, write_discounts, read_discounts`.
+Two supported credential paths (see `.env.example`): **Path A** for the shadow run uses an admin "Develop apps" token plus store-level webhooks (`SHOPIFY_ADMIN_ACCESS_TOKEN` + `SHOPIFY_WEBHOOK_SECRET`). **Path B** for cutover uses a Dev Dashboard app with the client-credentials grant (`SHOPIFY_CLIENT_ID` + `SHOPIFY_CLIENT_SECRET`), which also enables the app proxy and theme extension.
+
+1. Create the app (Path A: Settings → Apps → Develop apps; Path B: Dev Dashboard) with scopes `read_orders, read_customers, write_customers, write_discounts, read_discounts`.
 2. Webhooks (JSON) to `https://<host>/webhooks/shopify`: `orders/paid`, `orders/cancelled`, `refunds/create`, `customers/create`, `customers/update`, `customers/delete`, plus the mandatory `customers/data_request`, `customers/redact`, `shop/redact`.
 3. App proxy: subpath prefix `apps`, subpath `rewards`, proxy URL `https://<host>/proxy`. The storefront then calls `/apps/rewards/me`, `/apps/rewards/redeem`, `/apps/rewards/referral/share`, `/apps/rewards/referral/claim`, `/apps/rewards/opt-in`.
 4. Put the API secret in `SHOPIFY_API_SECRET` (verifies webhooks and proxy signatures) and the Admin token in `SHOPIFY_ADMIN_ACCESS_TOKEN`.

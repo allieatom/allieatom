@@ -19,18 +19,44 @@ export interface ShopifyAdminApi {
 
 export const customerGid = (id: number | string) => `gid://shopify/Customer/${id}`;
 
+export type ShopifyAuth = { kind: 'token'; accessToken: string } | { kind: 'client_credentials'; clientId: string; clientSecret: string };
+
+/** Supplies a current Admin API token. Client-credentials tokens last 24h; we refresh 5 minutes early and on a 401. */
+export class TokenProvider {
+  private cached: { token: string; expiresAt: number } | null = null;
+  constructor(private readonly shopDomain: string, private readonly auth: ShopifyAuth, private readonly fetchImpl: typeof fetch = fetch, private readonly now: () => number = Date.now) {}
+
+  async get(): Promise<string> {
+    if (this.auth.kind === 'token') return this.auth.accessToken;
+    if (this.cached && this.cached.expiresAt - this.now() > 5 * 60_000) return this.cached.token;
+    const res = await this.fetchImpl(`https://${this.shopDomain}/admin/oauth/access_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: new URLSearchParams({ grant_type: 'client_credentials', client_id: this.auth.clientId, client_secret: this.auth.clientSecret }),
+    });
+    if (!res.ok) throw new Error(`Shopify token request failed: ${res.status} ${await res.text()}`);
+    const json = (await res.json()) as { access_token: string; expires_in: number; scope?: string };
+    this.cached = { token: json.access_token, expiresAt: this.now() + json.expires_in * 1000 };
+    return json.access_token;
+  }
+  invalidate(): void { this.cached = null; }
+}
+
 export class ShopifyAdmin implements ShopifyAdminApi {
   private readonly endpoint: string;
-  constructor(private readonly shopDomain: string, private readonly accessToken: string, apiVersion: string, private readonly fetchImpl: typeof fetch = fetch) {
+  private readonly tokens: TokenProvider;
+  constructor(shopDomain: string, auth: ShopifyAuth | string, apiVersion: string, private readonly fetchImpl: typeof fetch = fetch, now: () => number = Date.now) {
     this.endpoint = `https://${shopDomain}/admin/api/${apiVersion}/graphql.json`;
+    this.tokens = new TokenProvider(shopDomain, typeof auth === 'string' ? { kind: 'token', accessToken: auth } : auth, fetchImpl, now);
   }
 
-  async graphql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  async graphql<T>(query: string, variables: Record<string, unknown> = {}, retried = false): Promise<T> {
     const res = await this.fetchImpl(this.endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': this.accessToken },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': await this.tokens.get() },
       body: JSON.stringify({ query, variables }),
     });
+    if (res.status === 401 && !retried) { this.tokens.invalidate(); return this.graphql<T>(query, variables, true); }
     if (!res.ok) throw new Error(`Shopify Admin API ${res.status}: ${await res.text()}`);
     const json = (await res.json()) as { data?: T; errors?: { message: string }[] };
     if (json.errors?.length) throw new Error(`Shopify GraphQL errors: ${json.errors.map((e) => e.message).join('; ')}`);

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { verifyAppProxySignature } from '../shopify/hmac.js';
 import type { LoyaltyService } from '../services/loyalty.js';
 
-export interface ProxyDeps { loyalty: LoyaltyService; shopifySecret: string }
+export interface ProxyDeps { loyalty: LoyaltyService; shopifySecret: string | null }
 
 /**
  * Shopify forwards https://www.betterrhodes.com/apps/rewards/* to these routes, adding shop, path_prefix, timestamp,
@@ -11,6 +11,7 @@ export interface ProxyDeps { loyalty: LoyaltyService; shopifySecret: string }
  */
 export async function proxyRoutes(app: FastifyInstance, deps: ProxyDeps): Promise<void> {
   app.addHook('preHandler', async (req, reply) => {
+    if (!deps.shopifySecret) return reply.code(503).send({ error: 'storefront proxy not configured (set SHOPIFY_API_SECRET or SHOPIFY_CLIENT_SECRET)' });
     const q = req.query as Record<string, string | string[] | undefined>;
     if (!verifyAppProxySignature(q, deps.shopifySecret)) return reply.code(401).send({ error: 'invalid signature' });
     const ts = Number(q['timestamp']);
