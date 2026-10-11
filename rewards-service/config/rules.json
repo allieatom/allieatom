@@ -1,0 +1,51 @@
+{
+  "programName": "Better Rhodes Rewards",
+  "currency": "USD",
+  "earning": {
+    "purchase": {
+      "title": "Make a Purchase",
+      "pointsPerDollar": 1,
+      "basis": "subtotal_after_discounts",
+      "rounding": "floor",
+      "excludeGiftCards": true,
+      "excludeProductTags": [],
+      "pendingDays": 0
+    },
+    "spendThresholdBonuses": [
+      { "key": "spend_200_single_purchase", "title": "Spend $200 in a single Purchase", "minBasisCents": 20000, "points": 225 }
+    ],
+    "birthday": { "key": "birthday", "title": "Happy Birthday", "points": 100 },
+    "signup": { "key": "signup", "title": "Create an Account", "points": 60 },
+    "referral": { "key": "refer_a_friend", "title": "Refer a friend", "points": 200 }
+  },
+  "redemption": {
+    "codeLength": 8,
+    "codeAlphabet": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+    "combinesWith": { "orderDiscounts": false, "productDiscounts": false, "shippingDiscounts": false },
+    "options": [
+      { "key": "off_5",  "title": "$5 Off",  "points": 100, "discountType": "fixed_amount", "value": 5,  "minSubtotalCents": 0 },
+      { "key": "off_10", "title": "$10 Off", "points": 200, "discountType": "fixed_amount", "value": 10, "minSubtotalCents": 100 },
+      { "key": "off_15", "title": "$15 Off", "points": 300, "discountType": "fixed_amount", "value": 15, "minSubtotalCents": 100 },
+      { "key": "off_20", "title": "$20 Off", "points": 400, "discountType": "fixed_amount", "value": 20, "minSubtotalCents": 100 }
+    ]
+  },
+  "referral": {
+    "codeLength": 7,
+    "codeAlphabet": "abcdefghijklmnopqrstuvwxyz0123456789",
+    "landingPath": "/pages/loyalty-refer?ref=",
+    "friendReward": { "title": "10% off your first order", "discountType": "percentage", "value": 10, "firstOrderOnly": true },
+    "completeOn": "first_paid_order",
+    "clawbackDays": 30
+  },
+  "tiers": {
+    "tagPrefix": "swell_vip_",
+    "evaluationWindowMonths": 12,
+    "list": [
+      { "name": "Bronze",   "rank": 0, "minSpendCents": 0,      "pointsMultiplier": 1.0 },
+      { "name": "Silver",   "rank": 1, "minSpendCents": 90000,  "pointsMultiplier": 1.0, "todo": "$900 inferred from Klaviyo loyalty_nt_amount_cents on Bronze profiles; confirm perks/multiplier in Yotpo admin" },
+      { "name": "Gold",     "rank": 2, "minSpendCents": null,   "pointsMultiplier": 1.0, "todo": "threshold unknown" },
+      { "name": "Platinum", "rank": 3, "minSpendCents": null,   "pointsMultiplier": 1.0, "todo": "threshold unknown" }
+    ]
+  },
+  "expiry": { "mode": "inactivity", "months": 12, "reminderDaysBefore": 30, "title": "Points Expiration" }
+}

@@ -1,0 +1,71 @@
+# Render Blueprint: deploys the rewards-service shadow instance (web + nightly cron + Postgres).
+# Dashboard > New > Blueprint > pick this repo and branch. Values marked sync: false are entered once in the dashboard.
+envVarGroups:
+  - name: rewards-shared
+    envVars:
+      - key: SHOPIFY_SHOP_DOMAIN
+        value: betterrhodes.myshopify.com
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
+        sync: false
+      - key: SHOPIFY_WEBHOOK_SECRET
+        sync: false
+      - key: KLAVIYO_PRIVATE_API_KEY
+        sync: false
+      - key: KLAVIYO_EMIT_ENABLED
+        value: "false"
+      - key: SHOPIFY_SYNC_ENABLED
+        value: "false"
+      - key: SHOPIFY_API_VERSION
+        value: "2026-01"
+      - key: PUBLIC_BASE_URL
+        value: https://www.betterrhodes.com
+      - key: RULES_PATH
+        value: ./config/rules.json
+      - key: LOG_LEVEL
+        value: info
+      - key: ADMIN_API_TOKEN
+        generateValue: true
+
+services:
+  - type: web
+    name: betterrhodes-rewards
+    runtime: docker
+    rootDir: rewards-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: ohio
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - fromGroup: rewards-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betterrhodes-rewards-db
+          property: connectionString
+
+  - type: cron
+    name: betterrhodes-rewards-daily
+    runtime: docker
+    rootDir: rewards-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    region: ohio
+    schedule: "15 9 * * *"          # 09:15 UTC = 05:15 ET: expiry, birthdays, tier maintenance, reminders, outbox delivery
+    dockerCommand: node dist/cli/daily.js
+    envVars:
+      - fromGroup: rewards-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: betterrhodes-rewards-db
+          property: connectionString
+
+databases:
+  - name: betterrhodes-rewards-db
+    databaseName: rewards
+    user: rewards
+    plan: basic-256mb
+    region: ohio

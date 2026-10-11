@@ -1,0 +1,21 @@
+# Example Fly.io config (one of several possible hosts). `fly launch --copy-config` then set secrets with `fly secrets set`.
+app = "betterrhodes-rewards"
+primary_region = "iad"
+[build]
+[env]
+  PORT = "8080"
+  LOG_LEVEL = "info"
+  RULES_PATH = "./config/rules.json"
+  PUBLIC_BASE_URL = "https://www.betterrhodes.com"
+  KLAVIYO_EMIT_ENABLED = "false"
+  SHOPIFY_SYNC_ENABLED = "false"
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  min_machines_running = 1
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  method = "GET"
+  path = "/healthz"

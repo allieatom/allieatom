@@ -1,0 +1,30 @@
+{%- comment -%}
+  App embed: replaces Yotpo widget 559176 (site-wide floating "Rewards" launcher).
+  Identity comes from Shopify's app proxy (logged_in_customer_id), never from this markup.
+{%- endcomment -%}
+{{ 'rewards-widget.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'rewards-widget.js' | asset_url }}" defer></script>
+<div data-br-rewards="launcher"
+     data-proxy="{{ block.settings.proxy_path | default: '/apps/rewards' }}"
+     data-label="{{ block.settings.label | escape }}"
+     data-position="{{ block.settings.position }}"
+     data-logged-in="{% if customer %}true{% else %}false{% endif %}"
+     data-login-url="{{ routes.account_login_url }}"
+     data-register-url="{{ routes.account_register_url }}"
+     data-rewards-url="/pages/loyalty-rewards"
+     data-refer-url="/pages/loyalty-refer"
+     style="--brw-primary: {{ block.settings.primary_color }}; --brw-text-on-primary: {{ block.settings.text_on_primary }}; --brw-radius: {{ block.settings.radius }}px;"></div>
+{% schema %}
+{
+  "name": "t:launcher.name",
+  "target": "body",
+  "settings": [
+    { "type": "text", "id": "label", "label": "Button label", "default": "Rewards" },
+    { "type": "select", "id": "position", "label": "Position", "default": "right", "options": [ { "value": "right", "label": "Bottom right" }, { "value": "left", "label": "Bottom left" } ] },
+    { "type": "color", "id": "primary_color", "label": "Primary colour", "default": "#ed6921" },
+    { "type": "color", "id": "text_on_primary", "label": "Text on primary", "default": "#ffffff" },
+    { "type": "range", "id": "radius", "label": "Corner radius", "min": 0, "max": 32, "step": 2, "default": 12 },
+    { "type": "text", "id": "proxy_path", "label": "App proxy path", "default": "/apps/rewards" }
+  ]
+}
+{% endschema %}

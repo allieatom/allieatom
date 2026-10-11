@@ -1,0 +1,30 @@
+# Shopify CLI app manifest (custom app for the Better Rhodes store). Fill client_id after `shopify app init`/`shopify app config link`.
+name = "Better Rhodes Rewards"
+client_id = "REPLACE_WITH_CLIENT_ID"
+application_url = "https://REPLACE_WITH_HOST"
+embedded = false
+
+[access_scopes]
+scopes = "read_orders,read_customers,write_customers,write_discounts,read_discounts"
+
+[auth]
+redirect_urls = ["https://REPLACE_WITH_HOST/auth/callback"]
+
+[webhooks]
+api_version = "2026-01"
+
+  [[webhooks.subscriptions]]
+  topics = ["orders/paid", "orders/cancelled", "refunds/create", "customers/create", "customers/update", "customers/delete"]
+  uri = "https://REPLACE_WITH_HOST/webhooks/shopify"
+
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://REPLACE_WITH_HOST/webhooks/shopify"
+
+[app_proxy]
+url = "https://REPLACE_WITH_HOST/proxy"
+subpath = "rewards"
+prefix = "apps"
+
+[build]
+include_config_on_deploy = true
